@@ -6,7 +6,7 @@
 	"version": "v1.1.1",
 	"id": "ai.predictivebuffer",
 	"name": "ClickAssist",
-	"developer": "lilWC",
+	"developer": "Edhie",
 	"description": "A transparent trajectory-based practice assist. Every active session is marked assisted and invalid for leaderboard or top-play submission.",
 	"settings": {
 		"show-live-console": {
