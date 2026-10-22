@@ -1,0 +1,24 @@
+# CMake and local build products
+/build/
+/out/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+
+# Generated Geode packages and Windows binaries
+*.geode
+*.dll
+*.exp
+*.lib
+*.pdb
+
+# Local editor and operating-system files
+.vs/
+.vscode/
+*.user
+Thumbs.db
+Desktop.ini
+
+# Local diagnostics
+prediction-telemetry.log

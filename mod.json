@@ -1,0 +1,20 @@
+{
+	"geode": "5.11.2",
+	"gd": {
+		"win": "2.2081"
+	},
+	"version": "v1.1.0",
+	"id": "ai.predictivebuffer",
+	"name": "ClickAssist",
+	"developer": "lilWC",
+	"description": "A transparent trajectory-based practice assist. Every active session is marked assisted and invalid for leaderboard or top-play submission.",
+	"settings": {
+		"write-detailed-telemetry": {
+			"type": "bool",
+			"name": "Write Detailed Telemetry",
+			"description": "Write local prediction diagnostics for troubleshooting. This never changes the always-visible assisted and invalid run status.",
+			"default": false,
+			"requires-restart": true
+		}
+	}
+}
