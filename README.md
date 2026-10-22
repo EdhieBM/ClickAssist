@@ -51,3 +51,7 @@ The packaged `.geode` is emitted in `build/`.
 Do not submit runs made with ClickAssist to leaderboards, record lists,
 verification teams, or top-play showcases. If you share footage, disclose that
 ClickAssist was active.
+
+## License
+
+ClickAssist is licensed under the [GNU General Public License v3.0](LICENSE).
