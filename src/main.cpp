@@ -12,6 +12,7 @@
 #include <cstdarg>
 #include <filesystem>
 #include <fstream>
+#include <string>
 #include <system_error>
 #include <vector>
 
@@ -26,6 +27,9 @@ static bool s_telemetryFileOpenAttempted = false;
 static unsigned int s_telemetryPendingLines = 0;
 constexpr unsigned int TELEMETRY_FLUSH_INTERVAL_LINES = 64;
 constexpr char const* ASSISTED_STATUS_NODE_ID = "clickassist-assisted-status";
+constexpr char const* ASSISTED_STAGE_NODE_ID = "clickassist-assisted-stage";
+
+static void refreshAssistHud();
 
 static bool isDetailedTelemetryEnabled() {
     return Mod::get()->getSettingValue<bool>("write-detailed-telemetry");
@@ -466,7 +470,7 @@ public:
         m_rapidInputStreak = 0;
     }
 
-    // Cycles through the 5 F6 stages:
+    // Cycles through the five configured keybind stages:
     // 0: 2 All / 2 Wave -> 1: 4 All / 4 Wave -> 2: 8 All / 8 Wave -> 3: 16 All / 8 Wave -> 4: OFF
     void cyclePreset() {
         m_presetIndex = (m_presetIndex + 1) % 5;
@@ -509,17 +513,22 @@ public:
                 break;
         }
 
-        if (auto* layer = PlayLayer::get(); layer && layer->m_uiLayer) {
-            if (auto* status = layer->m_uiLayer->getChildByID(ASSISTED_STATUS_NODE_ID)) {
-                // Stage 5 is true pass-through input. Every assist stage stays
-                // visibly invalid, while this no-assist stage has no marker.
-                status->setVisible(m_enabled);
-            }
-        }
+        refreshAssistHud();
     }
 
     bool isSimulating() const { return m_simulating; }
     bool isFiringBuffered() const { return m_firingBuffered; }
+    bool isEnabled() const { return m_enabled; }
+
+    char const* getActiveTickLabel() const {
+        switch (m_presetIndex) {
+            case 0: return "2/2";
+            case 1: return "4/4";
+            case 2: return "8/8";
+            case 3: return "16/8";
+            default: return "";
+        }
+    }
 
     bool checkSimulationDeath(PlayerObject* player) {
         if (m_simulating && (player == m_simPlayer1 || player == m_simPlayer2)) {
@@ -1115,11 +1124,6 @@ public:
         PlayLayer* pl = PlayLayer::get();
         if (!pl || player != pl->m_player1) return;
 
-        // Check F6 before m_enabled check so you can always cycle back ON when it is OFF!
-        if (GetAsyncKeyState(VK_F6) & 1) {
-            cyclePreset();
-        }
-
         if (!m_enabled) {
             if (m_releaseAssistActive && m_gameHolding != m_physicalHolding) {
                 m_SimFireButton(pl, m_physicalHolding);
@@ -1193,15 +1197,68 @@ public:
 
 static TrajectoryBufferSim s_sim;
 
+static void refreshAssistHud() {
+    auto* layer = PlayLayer::get();
+    if (!layer || !layer->m_uiLayer) return;
+
+    auto* status = static_cast<CCLabelBMFont*>(
+        layer->m_uiLayer->getChildByID(ASSISTED_STATUS_NODE_ID)
+    );
+    auto* stage = static_cast<CCLabelBMFont*>(
+        layer->m_uiLayer->getChildByID(ASSISTED_STAGE_NODE_ID)
+    );
+    if (!status || !stage) return;
+
+    // Stage 5 is true raw pass-through input. All assist stages stay visibly
+    // marked, while raw input hides both pieces of the indicator.
+    const bool visible = s_sim.isEnabled();
+    status->setVisible(visible);
+    stage->setVisible(visible);
+    if (!visible) return;
+
+    stage->setString(s_sim.getActiveTickLabel());
+
+    const auto size = CCDirector::sharedDirector()->getWinSize();
+    constexpr float margin = 12.f;
+    constexpr float spacing = 5.f;
+    const float statusWidth = status->getContentSize().width * status->getScale();
+    const float stageWidth = stage->getContentSize().width * stage->getScale();
+    const float clusterWidth = statusWidth + spacing + stageWidth;
+
+    const std::string position = Mod::get()->getSettingValue<std::string>("hud-position");
+    const bool top = position.starts_with("top-");
+    const bool center = position.ends_with("-center");
+    const bool right = position.ends_with("-right");
+    const float x = right ? size.width - margin - clusterWidth :
+        center ? (size.width - clusterWidth) / 2.f : margin;
+    const float y = top ? size.height - margin : margin;
+
+    status->setPosition({ x, y });
+    stage->setPosition({ x + statusWidth + spacing, y });
+}
+
 $on_mod(Loaded) {
-    AllocConsole();
-    FILE* f;
-    freopen_s(&f, "CONOUT$", "w", stdout);
-    SetConsoleTitleA("Geode Predictive Input Buffer - Live Console");
-    predictiveLogPrintf("============================================================\n");
-    predictiveLogPrintf(" [ClickAssist] LOADED — all active sessions are assisted and invalid\n");
-    predictiveLogPrintf(" [ClickAssist] Detailed telemetry is controlled in Geode settings\n");
-    predictiveLogPrintf("============================================================\n");
+    if (Mod::get()->getSettingValue<bool>("show-live-console")) {
+        AllocConsole();
+        FILE* f;
+        freopen_s(&f, "CONOUT$", "w", stdout);
+        SetConsoleTitleA("ClickAssist - Live Console");
+        predictiveLogPrintf("============================================================\n");
+        predictiveLogPrintf(" [ClickAssist] LOADED — all active sessions are assisted and invalid\n");
+        predictiveLogPrintf(" [ClickAssist] Detailed telemetry is controlled in Geode settings\n");
+        predictiveLogPrintf("============================================================\n");
+    }
+
+    listenForKeybindSettingPresses("cycle-stage", [](Keybind const&, bool down, bool repeat, double) {
+        if (down && !repeat && PlayLayer::get()) {
+            s_sim.cyclePreset();
+            return ListenerResult::Stop;
+        }
+        return ListenerResult::Propagate;
+    });
+    listenForSettingChanges<std::string>("hud-position", [](std::string const&) {
+        refreshAssistHud();
+    });
 }
 
 class $modify(BufPlayLayer, PlayLayer) {
@@ -1214,19 +1271,24 @@ class $modify(BufPlayLayer, PlayLayer) {
     bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
         if (!PlayLayer::init(level, useReplay, dontCreateObjects)) return false;
         if (m_uiLayer && !m_uiLayer->getChildByID(ASSISTED_STATUS_NODE_ID)) {
-            auto* status = CCLabelBMFont::create(
-                "CLICKASSIST: ASSISTED - RUN INVALID", "bigFont.fnt"
-            );
-            if (status) {
+            auto* status = CCLabelBMFont::create("ClickAssist", "bigFont.fnt");
+            auto* stage = CCLabelBMFont::create("2/2", "bigFont.fnt");
+            if (status && stage) {
                 status->setID(ASSISTED_STATUS_NODE_ID);
-                status->setScale(0.38f);
-                status->setColor(ccc3(255, 80, 80));
-                status->setOpacity(235);
-                const auto size = CCDirector::sharedDirector()->getWinSize();
-                status->setPosition({ size.width / 2.f, size.height - 17.f });
+                stage->setID(ASSISTED_STAGE_NODE_ID);
+                status->setAnchorPoint({ 0.f, 0.5f });
+                stage->setAnchorPoint({ 0.f, 0.5f });
+                status->setScale(0.26f);
+                stage->setScale(0.20f);
+                status->setColor(ccc3(200, 64, 64));
+                stage->setColor(ccc3(165, 165, 165));
+                status->setOpacity(150);
+                stage->setOpacity(135);
                 m_uiLayer->addChild(status, 9999);
+                m_uiLayer->addChild(stage, 9999);
             }
         }
+        refreshAssistHud();
         // File I/O starts only after the game has safely created a level. It
         // avoids touching mod save paths during Geode's loader startup, while
         // still collecting every gameplay prediction decision.

@@ -8,9 +8,10 @@ when that path is safer. It is for learning, testing, and casual play.
 
 When an assist stage is active, every gameplay session is **assisted and
 invalid** for leaderboard, record, verification, or top-play submission. The
-game HUD displays `CLICKASSIST: ASSISTED - RUN INVALID` during every assist
-stage, and this marker cannot be hidden through the mod's settings. Stage 5 is
-true raw pass-through input, so it intentionally hides the marker.
+HUD shows a small dim red `ClickAssist` marker with the active tick limit. The
+marker cannot be hidden through the mod's settings while assistance is active.
+Stage 5 is true raw pass-through input, so it intentionally hides both HUD
+labels.
 
 The mod is deliberately transparent: it appears in Geode's normal mod list,
 uses normal Geode settings, and does not present assisted gameplay as a valid
@@ -26,9 +27,18 @@ achievement.
 
 ## Settings
 
-Geode shows ClickAssist in its regular mod list. Its only release setting is
-**Write Detailed Telemetry**, which is off by default and requires a restart.
-When enabled, diagnostics are written to:
+Geode shows ClickAssist in its regular mod list. It provides these release
+settings:
+
+- **Show Live Console** — off by default; opens the diagnostic terminal after
+  restart.
+- **Write Detailed Telemetry** — off by default; writes diagnostics after
+  restart.
+- **HUD Position** — places the dimmed marker and tick label at any screen
+  corner or horizontal center.
+- **Cycle Assist Stage** — an editable gameplay keybind; defaults to `F6`.
+
+Detailed telemetry is written to:
 
 `%LOCALAPPDATA%\\GeometryDash\\geode\\mods\\ai.predictivebuffer\\prediction-telemetry.log`
 

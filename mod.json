@@ -3,18 +3,46 @@
 	"gd": {
 		"win": "2.2081"
 	},
-	"version": "v1.1.0",
+	"version": "v1.1.1",
 	"id": "ai.predictivebuffer",
 	"name": "ClickAssist",
 	"developer": "lilWC",
 	"description": "A transparent trajectory-based practice assist. Every active session is marked assisted and invalid for leaderboard or top-play submission.",
 	"settings": {
+		"show-live-console": {
+			"type": "bool",
+			"name": "Show Live Console",
+			"description": "Open ClickAssist's diagnostic console when the game starts. Disabled by default.",
+			"default": false,
+			"requires-restart": true
+		},
 		"write-detailed-telemetry": {
 			"type": "bool",
 			"name": "Write Detailed Telemetry",
 			"description": "Write local prediction diagnostics for troubleshooting. This never changes the always-visible assisted and invalid run status.",
 			"default": false,
 			"requires-restart": true
+		},
+		"hud-position": {
+			"type": "string",
+			"name": "HUD Position",
+			"description": "Choose where the dim ClickAssist and active tick indicator appear during assisted play.",
+			"default": "bottom-left",
+			"one-of": [
+				"top-left",
+				"top-center",
+				"top-right",
+				"bottom-left",
+				"bottom-center",
+				"bottom-right"
+			]
+		},
+		"cycle-stage": {
+			"type": "keybind",
+			"name": "Cycle Assist Stage",
+			"description": "Cycle through the four assist stages and Stage 5 raw input.",
+			"default": "F6",
+			"category": "gameplay"
 		}
 	}
 }
